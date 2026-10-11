@@ -1,0 +1,1124 @@
+
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAY TETRIS — Block. Fire. Chaos.</title>
+<style>
+:root {
+  --orange: #ff7135;
+  --blue: #47cfff;
+  --panel: rgba(5, 12, 23, .94);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(ellipse at center, #182c41, #070b13 70%, #020407);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+#particles {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 780px;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid #34536d;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 0 35px #0008, inset 0 0 30px #167db512;
+}
+.main { text-align: center; }
+.eyebrow {
+  color: var(--orange);
+  font-weight: bold;
+  font-size: 10px;
+  letter-spacing: 4px;
+}
+h1 {
+  margin: 10px 0 4px;
+  font-size: clamp(32px, 5vw, 46px);
+  font-style: italic;
+  letter-spacing: -2px;
+  text-shadow: 0 0 20px #ff713580;
+}
+h1 span { color: var(--orange); }
+.subtitle {
+  color: #9eb5ca;
+  font-size: 10px;
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+}
+#game {
+  display: block;
+  width: min(70vw, 300px);
+  height: auto;
+  border: 1px solid #315779;
+  background: #06101d;
+  box-shadow: 0 0 24px #159bff22;
+}
+.stats {
+  width: 150px;
+  min-width: 130px;
+  text-align: center;
+}
+.stat {
+  margin-bottom: 12px;
+  padding: 12px 8px;
+  border: 1px solid #29445c;
+  border-radius: 8px;
+  background: #081522;
+}
+.label {
+  color: #94adc4;
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.number {
+  color: #fff;
+  font-size: 25px;
+  font-weight: bold;
+  text-shadow: 0 0 14px #38aaff77;
+}
+#next {
+  display: block;
+  width: 100px;
+  height: 90px;
+  margin: auto;
+}
+button {
+  width: 100%;
+  border: 1px solid #ff9b52;
+  border-radius: 6px;
+  padding: 12px 8px;
+  margin-top: 8px;
+  background: linear-gradient(100deg, #b82b17, #f47727);
+  color: white;
+  font-weight: bold;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: filter .15s, transform .15s;
+}
+button:hover { filter: brightness(1.2); transform: translateY(-1px); }
+button.secondary {
+  background: #112337;
+  border-color: #42627c;
+}
+#message {
+  min-height: 34px;
+  margin-top: 12px;
+  color: #b9c9da;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.help {
+  max-width: 310px;
+  margin: 12px auto 0;
+  color: #7891a9;
+  font-size: 10px;
+  line-height: 1.7;
+}
+kbd {
+  color: #eaf7ff;
+  background: #14283b;
+  border: 1px solid #3b566d;
+  border-radius: 3px;
+  padding: 2px 5px;
+}
+.footer {
+  margin-top: 14px;
+  color: #617d96;
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+.shake { animation: shake .22s linear; }
+@keyframes shake {
+  0%,100% { transform: translate(0,0); }
+  25% { transform: translate(-4px,2px); }
+  50% { transform: translate(4px,-2px); }
+  75% { transform: translate(-2px,-1px); }
+}
+@media (max-width: 560px) {
+  body { padding: 10px; align-items: flex-start; }
+  .layout { gap: 8px; }
+  .panel { padding: 12px; }
+  .stats { width: 105px; min-width: 95px; }
+  .number { font-size: 20px; }
+  .stat { padding: 9px 4px; }
+  .eyebrow { letter-spacing: 2px; }
+  .subtitle { letter-spacing: 1px; }
+}
+/* Filmový záblesk přes herní plochu */
+#cinematicFlash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  background: white;
+}
+
+#cinematicFlash.flash {
+  animation: cameraFlash .35s ease-out;
+}
+
+@keyframes cameraFlash {
+  0% { opacity: .95; }
+  100% { opacity: 0; }
+}
+
+/* Velký nápis při kombu */
+#comboBanner {
+  position: absolute;
+  z-index: 6;
+  top: 42%;
+  left: 50%;
+  width: 95%;
+  transform: translate(-50%, -50%) scale(.5);
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  color: #fff3c7;
+  font-size: clamp(20px, 5vw, 34px);
+  font-weight: 900;
+  font-style: italic;
+  text-shadow:
+    0 0 8px #fff,
+    0 0 20px #ff6a19,
+    0 0 40px #ff3200;
+}
+
+#comboBanner.show {
+  animation: comboImpact .95s ease-out;
+}
+
+@keyframes comboImpact {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(.9);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -65%) scale(1.2);
+  }
+}
+
+/* Krátké zesílení oranžové záře */
+#game {
+  transition: filter .12s;
+}
+
+#game.impact {
+  filter: brightness(1.8) saturate(1.7);
+}
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+
+<div class="layout">
+  <section class="panel main">
+    <div class="eyebrow">THE ACTION ARCADE PROJECT</div>
+    <h1>BAY <span>TETRIS</span></h1>
+    <div class="subtitle">BLOCKS. FIRE. TOTAL CHAOS.</div>
+    
+    <div id="gameStage" style="position:relative">
+        <canvas id="game" width="300" height="600"
+            aria-label="Herní plocha Tetris"></canvas>
+        <div id="cinematicFlash"></div>
+        <div id="comboBanner"></div>
+    </div>
+
+    <div id="message">Stiskni START a pusť se do akce.</div>
+    <button id="start">▶ START GAME</button>
+    <button id="pause" class="secondary">Ⅱ PAUSE</button>
+    <button id="sound" class="secondary">♪ SOUND: OFF</button>
+
+    <div class="help">
+      <kbd>←</kbd> <kbd>→</kbd> pohyb
+      <kbd>↑</kbd> rotace<br>
+      <kbd>↓</kbd> rychlejší pád
+      <kbd>SPACE</kbd> okamžitý pád<br>
+      <kbd>P</kbd> pauza · <kbd>R</kbd> restart
+    </div>
+    <div class="footer">ONE BOARD. NO MERCY.</div>
+  </section>
+
+  <aside class="panel stats">
+    <div class="stat">
+      <div class="label">SCORE</div>
+      <div class="number" id="score">0</div>
+    </div>
+    <div class="stat">
+      <div class="label">BEST</div>
+      <div class="number" id="best">0</div>
+    </div>
+    <div class="stat">
+      <div class="label">LINES</div>
+      <div class="number" id="lines">0</div>
+    </div>
+    <div class="stat">
+      <div class="label">LEVEL</div>
+      <div class="number" id="level">1</div>
+    </div>
+    <div class="stat">
+      <div class="label">NEXT BLOCK</div>
+      <canvas id="next" width="100" height="90"></canvas>
+    </div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+
+// ===== 1. ZÁKLADNÍ NASTAVENÍ =====
+const COLS = 10;
+const ROWS = 20;
+const SIZE = 30;
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const nextCanvas = document.getElementById("next");
+const nextCtx = nextCanvas.getContext("2d");
+
+const scoreEl = document.getElementById("score");
+const bestEl = document.getElementById("best");
+const linesEl = document.getElementById("lines");
+const levelEl = document.getElementById("level");
+const messageEl = document.getElementById("message");
+const startButton = document.getElementById("start");
+const pauseButton = document.getElementById("pause");
+const soundButton = document.getElementById("sound");
+const gamePanel = document.querySelector(".main");
+
+// Každé číslo představuje barvu jednoho typu kostky.
+const COLORS = [
+  null, "#40d9ff", "#ffbd45", "#bb75ff",
+  "#55e68a", "#ff526b", "#448dff", "#ff813c"
+];
+
+// Sedm klasických tvarů Tetrisu.
+const SHAPES = [
+  [[1,1,1,1]],                         // I
+  [[2,2],[2,2]],                       // O
+  [[0,3,0],[3,3,3]],                   // T
+  [[0,4,4],[4,4,0]],                   // S
+  [[5,5,0],[0,5,5]],                   // Z
+  [[6,0,0],[6,6,6]],                   // J
+  [[0,0,7],[7,7,7]]                    // L
+];
+
+let board;
+let active;
+let nextShape;
+let score = 0;
+let lines = 0;
+let level = 1;
+let best = 0;
+let previousBest = 0;
+let recordCelebrated = false;
+let running = false;
+let paused = false;
+let gameOver = false;
+let dropCounter = 0;
+let lastTime = 0;
+let particles = [];
+let shakeTime = 0;
+let audioContext = null;
+let soundOn = false;
+
+try {
+  best = Number(localStorage.getItem("bayTetrisBest")) || 0;
+} catch (error) {
+  best = 0;
+}
+bestEl.textContent = best;
+
+// ===== 2. VYTVÁŘENÍ HERNÍ DESKY A KOSTEK =====
+function createBoard() {
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+}
+
+function randomShape() {
+  const template = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+  return template.map(row => row.slice());
+}
+
+function newPiece(shape = randomShape()) {
+  return {
+    shape,
+    x: Math.floor((COLS - shape[0].length) / 2),
+    y: 0
+  };
+}
+
+function startGame() {
+  previousBest = best;
+  recordCelebrated = false;
+  board = createBoard();
+  score = 0;
+  lines = 0;
+  level = 1;
+  dropCounter = 0;
+  lastTime = 0;
+  particles = [];
+  gameOver = false;
+  paused = false;
+  running = true;
+
+  nextShape = randomShape();
+  active = newPiece();
+  spawnNext();
+  updateStats();
+  messageEl.textContent = "Mise zahájena. Skládej řádky!";
+  startButton.textContent = "↻ RESTART GAME";
+  pauseButton.textContent = "Ⅱ PAUSE";
+  drawNext();
+  draw();
+}
+
+function spawnNext() {
+  active = newPiece(nextShape);
+  nextShape = randomShape();
+  drawNext();
+
+  if (collides(active.shape, active.x, active.y)) {
+    running = false;
+    gameOver = true;
+    playGameOver();
+    messageEl.textContent = "GAME OVER — stiskni RESTART a zkus to znovu.";
+    startButton.textContent = "↻ PLAY AGAIN";
+    burst(canvas.width / 2, 100, 45);
+    
+  }
+}
+
+const flashElement = document.getElementById("cinematicFlash");
+const comboBanner = document.getElementById("comboBanner");
+
+let combo = 0;
+let lastClearTime = 0;
+
+function showImpact(text, strength = 1) {
+  // Zobrazí nápis nad herní plochou.
+  comboBanner.textContent = text;
+  comboBanner.classList.remove("show");
+  void comboBanner.offsetWidth;
+  comboBanner.classList.add("show");
+
+  // Krátký bílý záblesk.
+  flashElement.classList.remove("flash");
+  void flashElement.offsetWidth;
+  flashElement.classList.add("flash");
+
+  // Rozsvítí herní plochu.
+  canvas.classList.remove("impact");
+  void canvas.offsetWidth;
+  canvas.classList.add("impact");
+
+  setTimeout(() => canvas.classList.remove("impact"), 160);
+
+  // Síla otřesu se odvíjí od velikosti komba.
+  shakeTime = Math.max(shakeTime, 8 + strength * 5);
+}
+
+function playExplosion(strength = 1) {
+  if (!soundOn) return;
+
+  try {
+    if (!audioContext) {
+      audioContext = new (
+        window.AudioContext || window.webkitAudioContext
+      )();
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
+    }
+
+    const now = audioContext.currentTime;
+
+    // Hluboký basový úder s rychlým poklesem tónu.
+    const bass = audioContext.createOscillator();
+    const bassGain = audioContext.createGain();
+
+    bass.type = "sawtooth";
+    bass.frequency.setValueAtTime(110 + strength * 12, now);
+    bass.frequency.exponentialRampToValueAtTime(35, now + .35);
+
+    bassGain.gain.setValueAtTime(.001, now);
+    bassGain.gain.linearRampToValueAtTime(
+      Math.min(.28, .10 + strength * .035), now + .015
+    );
+    bassGain.gain.exponentialRampToValueAtTime(.001, now + .38);
+
+    bass.connect(bassGain);
+    bassGain.connect(audioContext.destination);
+    bass.start(now);
+    bass.stop(now + .4);
+
+    // Vyšší zvukový úder pro jiskřivý efekt.
+    const impact = audioContext.createOscillator();
+    const impactGain = audioContext.createGain();
+
+    impact.type = "triangle";
+    impact.frequency.setValueAtTime(650 + strength * 180, now);
+    impact.frequency.exponentialRampToValueAtTime(100, now + .22);
+
+    impactGain.gain.setValueAtTime(.001, now);
+    impactGain.gain.linearRampToValueAtTime(.12, now + .01);
+    impactGain.gain.exponentialRampToValueAtTime(.001, now + .24);
+
+    impact.connect(impactGain);
+    impactGain.connect(audioContext.destination);
+    impact.start(now);
+    impact.stop(now + .25);
+  } catch (error) {
+    // Hra pokračuje, i když prohlížeč zvuk nepodporuje.
+  }
+}
+
+// ===== 3. KOLIZE A POHYB =====
+function collides(shape, x, y) {
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (!shape[r][c]) continue;
+
+      const nx = x + c;
+      const ny = y + r;
+
+      if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+      if (ny >= 0 && board[ny][nx] !== 0) return true;
+    }
+  }
+  return false;
+}
+
+function move(dx) {
+  if (!running || paused || gameOver) return;
+
+  if (!collides(active.shape, active.x + dx, active.y)) {
+    active.x += dx;
+    draw();
+  }
+}
+
+function softDrop() {
+  if (!running || paused || gameOver) return;
+
+  if (!collides(active.shape, active.x, active.y + 1)) {
+    active.y++;
+    score++;
+    updateStats();
+  } else {
+    lockPiece();
+  }
+  dropCounter = 0;
+  draw();
+}
+
+function rotatePiece() {
+  if (!running || paused || gameOver) return;
+
+  const rotated = active.shape[0].map((_, index) =>
+    active.shape.map(row => row[index]).reverse()
+  );
+
+  // Jednoduchá korekce polohy při rotaci u stěny.
+  for (const offset of [0, -1, 1, -2, 2]) {
+    if (!collides(rotated, active.x + offset, active.y)) {
+      active.shape = rotated;
+      active.x += offset;
+      playTone(360, 0.045, "square");
+      draw();
+      return;
+    }
+  }
+}
+
+function hardDrop() {
+  if (!running || paused || gameOver) return;
+
+  let distance = 0;
+  while (!collides(active.shape, active.x, active.y + 1)) {
+    active.y++;
+    distance++;
+  }
+
+  score += distance * 2;
+  burst((active.x + 2) * SIZE, (active.y + 1) * SIZE, 15);
+  shakeTime = 10;
+  playTone(150, 0.1, "sawtooth");
+  playExplosion(1);
+  lockPiece();
+  updateStats();
+  draw();
+}
+
+// ===== 4. USAZENÍ KOSTEK A MAZÁNÍ ŘÁDKŮ =====
+function lockPiece() {
+  for (let r = 0; r < active.shape.length; r++) {
+    for (let c = 0; c < active.shape[r].length; c++) {
+      if (!active.shape[r][c]) continue;
+
+      const x = active.x + c;
+      const y = active.y + r;
+
+      if (y >= 0) board[y][x] = active.shape[r][c];
+    }
+  }
+
+  clearLines();
+  spawnNext();
+  draw();
+}
+
+function clearLines() {
+  let cleared = 0;
+
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (board[r].every(cell => cell !== 0)) {
+      // Exploze částic přímo na odstraněném řádku.
+      burst(canvas.width / 2, r * SIZE + SIZE / 2, 35);
+
+      board.splice(r, 1);
+      board.unshift(Array(COLS).fill(0));
+      cleared++;
+      r++;
+    }
+  }
+
+  if (cleared > 0) {
+    const points = [0, 100, 300, 500, 800];
+    score += points[cleared] * level;
+    lines += cleared;
+    level = Math.floor(lines / 10) + 1;
+
+    // Počítá úspěšné odstraňování řádků za sebou.
+    const now = Date.now();
+
+    if (now - lastClearTime < 10000) {
+      combo++;
+    } else {
+      combo = 1;
+    }
+
+    lastClearTime = now;
+
+    // Čím větší úspěch, tím silnější filmová reakce.
+    const messages = {
+      1: "LINE DESTROYED!",
+      2: "DOUBLE STRIKE!",
+      3: "TRIPLE ANNIHILATION!",
+      4: "TETRIS! TOTAL DESTRUCTION!"
+    };
+
+    const title = messages[cleared] || "MAXIMUM DESTRUCTION!";
+
+    showImpact(title, cleared);
+    playExplosion(cleared);
+
+    // Další bonus při úspěšných řádcích v řadě.
+    if (combo >= 2) {
+      score += 150 * combo * level;
+      showImpact(
+        combo >= 3 ? `🔥 ${combo}× COMBO! 🔥` : "🔥 COMBO! 🔥",
+        cleared + combo
+      );
+      playExplosion(cleared + combo);
+    }
+
+    messageEl.textContent =
+      `${cleared} řádek/řádky! +${points[cleared] * level} bodů`;
+
+    shakeTime = Math.max(shakeTime, 8 + cleared * 5);
+  } else {
+    // Nový dílek bez smazaného řádku přeruší sérii komb.
+    combo = 0;
+  }
+
+  updateStats();
+}
+
+
+function updateStats() {
+  scoreEl.textContent = score;
+  linesEl.textContent = lines;
+  levelEl.textContent = level;
+
+  if (score > best) {
+    best = score;
+     bestEl.textContent = best;
+  try {
+    localStorage.setItem("bayTetrisBest", String(best));
+  } catch (error) {
+    // Hra funguje i bez ukládání rekordu.
+  }
+}
+
+// Fanfára zazní pouze jednou za hru,
+// když překonáme rekord z jejího začátku.
+if (score > previousBest && !recordCelebrated) {
+  recordCelebrated = true;
+  playNewBest();
+}
+}
+
+// ===== 5. KRESLENÍ HRY =====
+function drawBlock(context, x, y, color, size = SIZE) {
+  const inset = Math.max(1, size * 0.045);
+  const width = size - inset * 2;
+
+  context.save();
+  context.shadowColor = color;
+  context.shadowBlur = size * 0.4;
+  context.fillStyle = color;
+  context.fillRect(x + inset, y + inset, width, width);
+
+  context.shadowBlur = 0;
+  context.strokeStyle = "#ffffff9c";
+  context.lineWidth = Math.max(0.7, size * 0.035);
+  context.strokeRect(x + inset + 0.5, y + inset + 0.5,
+    width - 1, width - 1);
+
+  context.fillStyle = "#ffffff35";
+  context.fillRect(x + inset + 2, y + inset + 2,
+    Math.max(1, width - 4), Math.max(1, size * 0.08));
+  context.restore();
+}
+
+function drawGrid() {
+  ctx.fillStyle = "#06101d";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = "#24415a55";
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= canvas.width; x += SIZE) {
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, canvas.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= canvas.height; y += SIZE) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(canvas.width, y + 0.5);
+    ctx.stroke();
+  }
+}
+
+function drawPiece(piece, ghost = false) {
+  if (!piece) return;
+
+  for (let r = 0; r < piece.shape.length; r++) {
+    for (let c = 0; c < piece.shape[r].length; c++) {
+      const value = piece.shape[r][c];
+      if (!value) continue;
+
+      const x = (piece.x + c) * SIZE;
+      const y = (piece.y + r) * SIZE;
+      if (y < 0) continue;
+
+      if (ghost) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        drawBlock(ctx, x, y, COLORS[value]);
+        ctx.restore();
+      } else {
+        drawBlock(ctx, x, y, COLORS[value]);
+      }
+    }
+  }
+}
+
+function drawNext() {
+  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  if (!nextShape) return;
+
+  const size = 20;
+  const shapeWidth = nextShape[0].length * size;
+  const shapeHeight = nextShape.length * size;
+  const ox = (nextCanvas.width - shapeWidth) / 2;
+  const oy = (nextCanvas.height - shapeHeight) / 2;
+
+  for (let r = 0; r < nextShape.length; r++) {
+    for (let c = 0; c < nextShape[r].length; c++) {
+      if (nextShape[r][c]) {
+        drawBlock(nextCtx, ox + c * size, oy + r * size,
+          COLORS[nextShape[r][c]], size);
+      }
+    }
+  }
+}
+
+function draw() {
+  if (!board) return;
+
+  drawGrid();
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c]) {
+        drawBlock(ctx, c * SIZE, r * SIZE, COLORS[board[r][c]]);
+      }
+    }
+  }
+
+  if (active && running) {
+    let ghostY = active.y;
+    while (!collides(active.shape, active.x, ghostY + 1)) ghostY++;
+
+    drawPiece({ ...active, y: ghostY }, true);
+    drawPiece(active);
+  }
+
+  if (paused || gameOver || !running) {
+    ctx.fillStyle = "#020712c9";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = gameOver ? "#ff7135" : "#ffffff";
+    ctx.font = "bold 25px Arial";
+    ctx.fillText(gameOver ? "GAME OVER" : paused ? "PAUSED" : "BAY TETRIS",
+      canvas.width / 2, canvas.height / 2 - 12);
+
+    ctx.fillStyle = "#b6c9da";
+    ctx.font = "12px Arial";
+    ctx.fillText(gameOver ? "Press RESTART" : paused ? "Press P to resume" : "Press START",
+      canvas.width / 2, canvas.height / 2 + 18);
+  }
+}
+
+// ===== 6. ANIMACE PÁDU =====
+function update(time = 0) {
+  const delta = lastTime ? Math.min(time - lastTime, 100) : 0;
+  lastTime = time;
+
+  if (running && !paused && !gameOver) {
+    dropCounter += delta;
+    const interval = Math.max(90, 800 - (level - 1) * 65);
+
+    if (dropCounter > interval) {
+      if (!collides(active.shape, active.x, active.y + 1)) {
+        active.y++;
+      } else {
+        lockPiece();
+      }
+      dropCounter = 0;
+    }
+  }
+
+  updateParticles();
+  drawParticles();
+
+  if (shakeTime > 0) {
+    shakeTime--;
+    gamePanel.classList.add("shake");
+  } else {
+    gamePanel.classList.remove("shake");
+  }
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+// ===== 7. JISKRY A EFEKTY =====
+function burst(x, y, amount) {
+  for (let i = 0; i < amount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 4;
+
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 25 + Math.random() * 30,
+      maxLife: 55,
+      size: 1 + Math.random() * 3,
+      color: Math.random() > 0.35 ? "#ff7835" : "#ffe7a1"
+    });
+  }
+}
+
+function updateParticles() {
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.045;
+    p.vx *= 0.985;
+    p.life--;
+  }
+  particles = particles.filter(p => p.life > 0);
+}
+
+const particleCanvas = document.getElementById("particles");
+const pctx = particleCanvas.getContext("2d");
+
+function resizeParticles() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  particleCanvas.width = window.innerWidth * dpr;
+  particleCanvas.height = window.innerHeight * dpr;
+  particleCanvas.style.width = window.innerWidth + "px";
+  particleCanvas.style.height = window.innerHeight + "px";
+  pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function drawParticles() {
+  pctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  const rect = canvas.getBoundingClientRect();
+
+  for (const p of particles) {
+    pctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    pctx.fillStyle = p.color;
+    pctx.shadowColor = p.color;
+    pctx.shadowBlur = 10;
+    pctx.beginPath();
+    pctx.arc(
+      rect.left + p.x * rect.width / canvas.width,
+      rect.top + p.y * rect.height / canvas.height,
+      p.size, 0, Math.PI * 2
+    );
+    pctx.fill();
+  }
+
+  pctx.globalAlpha = 1;
+  pctx.shadowBlur = 0;
+}
+
+// ===== 8. VOLITELNÉ ZVUKY =====
+
+function playTone(frequency, duration, type = "sine") {
+  if (!soundOn) return;
+
+  try {
+    if (!audioContext) {
+      audioContext = new (
+        window.AudioContext || window.webkitAudioContext
+      )();
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audioContext.currentTime + duration
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + duration);
+
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gain.disconnect();
+    };
+  } catch (error) {
+    console.error("Chyba zvuku:", error);
+  }
+}
+
+function playNewBest() {
+  if (!soundOn) return;
+
+  const notes = [523, 659, 784, 1046, 784, 1046];
+
+  notes.forEach((frequency, index) => {
+    setTimeout(() => {
+      if (soundOn) {
+        playTone(frequency, 0.3, "sine");
+      }
+    }, index * 180);
+  });
+
+  setTimeout(() => {
+    if (soundOn) {
+      playTone(262, 0.6, "triangle");
+    }
+  }, 1100);
+}
+
+function playGameOver() {
+  if (!soundOn) return;
+
+  const notes = [
+    { frequency: 220, delay: 0 },
+    { frequency: 165, delay: 300 },
+    { frequency: 110, delay: 650 }
+  ];
+
+  notes.forEach((note) => {
+    setTimeout(() => {
+      if (soundOn) {
+        playTone(note.frequency, 0.7, "triangle");
+      }
+    }, note.delay);
+  });
+}
+
+
+// ===== 9. OVLÁDÁNÍ KLÁVESNICÍ =====
+document.addEventListener("keydown", event => {
+  const keys = [
+    "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"
+  ];
+
+  if (keys.includes(event.code)) event.preventDefault();
+
+  if (event.code === "KeyR") {
+    startGame();
+    return;
+  }
+
+  if (event.code === "KeyP" || event.code === "Escape") {
+    togglePause();
+    return;
+  }
+
+  if (!running || paused || gameOver) return;
+
+  switch (event.code) {
+    case "ArrowLeft":
+      move(-1);
+      break;
+    case "ArrowRight":
+      move(1);
+      break;
+    case "ArrowUp":
+      rotatePiece();
+      break;
+    case "ArrowDown":
+      softDrop();
+      break;
+    case "Space":
+      hardDrop();
+      break;
+  }
+});
+
+function togglePause() {
+  if (!running || gameOver) return;
+
+  paused = !paused;
+  pauseButton.textContent = paused ? "▶ RESUME" : "Ⅱ PAUSE";
+  messageEl.textContent = paused ? "Hra pozastavena." : "Pokračujeme v akci!";
+  draw();
+}
+
+startButton.addEventListener("click", startGame);
+pauseButton.addEventListener("click", togglePause);
+
+
+
+
+soundButton.addEventListener("click", async () => {
+  if (!audioContext || audioContext.state === "closed") {
+    const AudioEngine =
+      window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioEngine) {
+      messageEl.textContent = "Tento prohlížeč nepodporuje zvuk.";
+      return;
+    }
+
+    audioContext = new AudioEngine();
+  }
+
+  soundOn = !soundOn;
+
+  soundButton.textContent = soundOn
+    ? "♪ SOUND: ON"
+    : "♪ SOUND: OFF";
+
+  if (!soundOn) {
+    messageEl.textContent = "Zvuk vypnut.";
+    return;
+  }
+
+  try {
+    await audioContext.resume();
+
+    // Krátký potvrzovací tón po zapnutí zvuku.
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = 660;
+
+    gain.gain.setValueAtTime(0.001, audioContext.currentTime);
+    gain.gain.linearRampToValueAtTime(
+      0.2, audioContext.currentTime + 0.02
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.001, audioContext.currentTime + 0.35
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.36);
+
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gain.disconnect();
+    };
+
+    messageEl.textContent = "Zvuk je zapnutý. Připrav se na akci!";
+  } catch (error) {
+    console.error("Chyba zvuku:", error);
+    messageEl.textContent = "Zvuk se nepodařilo spustit.";
+  }
+});
+
+
+window.addEventListener("resize", resizeParticles);
+
+// ===== 10. PRVNÍ ZOBRAZENÍ =====
+board = createBoard();
+nextShape = randomShape();
+active = null;
+drawNext();
+draw();
+resizeParticles();
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
